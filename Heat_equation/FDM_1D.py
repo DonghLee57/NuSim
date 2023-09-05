@@ -48,7 +48,7 @@ if 'static' in plots:
 
 if 'ani' in plots:
   from matplotlib import animation
-  NIMG = 10
+  NIMG = 11
   STEP = MAXIT//NIMG
   fig, ax = plt.subplots(figsize=(5,5))
   Writer = animation.writers['ffmpeg']
