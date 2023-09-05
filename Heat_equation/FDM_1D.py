@@ -7,7 +7,7 @@ import matplotlib.pyplot as plt
 # mu = lambda/rho/cp
 
 # 
-MAXIT = 10000
+MAXIT = 10001
 Nx = 1000
 plots = ['static', 'ani'] 
 #
@@ -15,8 +15,8 @@ plots = ['static', 'ani']
 TEMP = np.empty((MAXIT, Nx))
 
 # mu*dt/dx**2 < 1/2
-mu = 2.0  # mm2/s
-dt = 0.2  # s
+mu = 1.0  # mm2/s
+dt = 0.1  # s
 dx = 1    # mm
 alpha = mu*dt/dx**2
 if alpha <= 0.5:
@@ -35,14 +35,14 @@ for k in range(MAXIT-1):
     TEMP[k+1][idx-1] = TEMP[k][idx-1] + alpha * (TEMP[k][idx] - 2*TEMP[k][idx-1] + TEMP[k][idx-2])
 
 if 'static' in plots:
-  NIMG = 10
-  fig, ax = plt.subplots(1,NIMG, figsize=(NIMG*5,5))
+  NIMG = 11
+  fig, ax = plt.subplots(1,NIMG, figsize=((NIMG)*5,5))
   STEP = MAXIT//NIMG
   for n in range(NIMG):
     plt_T = ax[n].plot(np.arange(0,dx*Nx, dx)/1000, TEMP[n*STEP])
     ax[n].set_title(f'Time = {dt*n:.1f} sec')
     ax[n].set_xlabel('Position (m)')
-    ax[n].set_xlabel('Temperature (K)')
+    ax[n].set_ylabel('Temperature (K)')
     ax[n].set_ylim([-10,1010])
   plt.show()
 
@@ -59,7 +59,7 @@ if 'ani' in plots:
       plt_T = ax.plot(np.arange(0,dx*Nx, dx)/1000, TEMP[n*STEP])
       ax.set_title(f'Time = {dt*n:.1f} sec')
       ax.set_xlabel('Position (m)')
-      ax.set_xlabel('Temperature (K)')
+      ax.set_ylabel('Temperature (K)')
       ax.set_ylim([-10,1010])
       writer.grab_frame()
       plt.cla()
