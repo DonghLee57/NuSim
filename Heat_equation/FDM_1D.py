@@ -19,7 +19,7 @@ mu = 2.0  # mm2/s
 dt = 0.2  # s
 dx = 1    # mm
 alpha = mu*dt/dx**2
-if stability <= 0.5:
+if alpha <= 0.5:
   print(f"Simulation condition is fine. Stability is {alpha:.2f} under 0.5.")
 else:
   print(f"Simulation condition is bad.  Stability is {alpha:.2f}  over 0.5.")
