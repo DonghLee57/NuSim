@@ -98,17 +98,19 @@ def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
         + (Grid[x][idy-2] + Grid[x][idy] - 2*Grid[x][y])/(dy**2)
     return res
 
-def plots(PATH='./', NIMG=11):
-    fig, ax = plt.subplots(1,NIMG, figsize=((NIMG)*5,5))
-    STEP = MAXIT//NIMG
-    for n in range(NIMG):
+def plots(PATH='./'):
+    STEP = np.arange(0,MAXIT,NSTEP)
+    fig, ax = plt.subplots(1,len(STEP), figsize=((len(STEP)*5,5))
+    for i, step in enumerate(STEP):
         SHOW = np.zeros((Nx,Ny))
-        with open(f'{PATH}/data{n*NSAVE:05d}.pickle','rb') as f:
+        with open(f'{PATH}/data{step:05d}.pickle','rb') as f:
             Grid = pickle.load(f)
         for N in range(len(Grid)):
+            Grid[N][Grid[N] < 0.9] = 0.0
             SHOW += Grid[N][:]*(N+1)
-        ax[n].imshow(SHOW)
-        ax[n].set_title(f'Time = {dt*n*STEP:.1f} unit time')
+        ax[n].imshow(SHOW, vmin=0, vmax=N)
+        ax[n].set_title(f'Time = {dt*step:.1f} unit time')
+        ax[n].set_xlabel(f'{dx*Nx:.1f} unit dist')
     plt.show()
     return 0
 
