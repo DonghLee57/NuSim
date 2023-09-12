@@ -38,9 +38,8 @@ def main():
                     if np.fabs(y0-y) > Ny//2: y += np.sign(y0-y)*Ny
                     if ((x0 - x)**2 + (y0 - y)**2)**0.5 < R:
                         ETAS[N][x%Nx][y%Ny] = 1.0
-    ETAS = comm.reduce(ETAS)
+    comm.Barrier()
     ETAS = comm.bcast(ETAS)
-
 
     # Evolve
     for k in range(MAXIT):
@@ -90,8 +89,6 @@ def main():
         comm.Barrier()
         ETAS_new = comm.bcast(ETAS_new)
         ETAS = ETAS_new.copy()
-
-    plots(Ngr)
     return 0
 
 def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
@@ -101,14 +98,14 @@ def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
         + (Grid[x][idy-2] + Grid[x][idy] - 2*Grid[x][y])/(dy**2)
     return res
 
-def plots(Ngr, NIMG=11):
+def plots(PATH='./', NIMG=11):
     fig, ax = plt.subplots(1,NIMG, figsize=((NIMG)*5,5))
     STEP = MAXIT//NIMG
     for n in range(NIMG):
         SHOW = np.zeros((Nx,Ny))
-        with open(f'data{n*NSAVE:05d}.pickle','rb') as f:
+        with open(f'{PATH}/data{n*NSAVE:05d}.pickle','rb') as f:
             Grid = pickle.load(f)
-        for N in range(Ngr):
+        for N in range(len(Grid)):
             SHOW += Grid[N][:]*(N+1)
         ax[n].imshow(SHOW)
         ax[n].set_title(f'Time = {dt*n*STEP:.1f} unit time')
@@ -117,3 +114,4 @@ def plots(Ngr, NIMG=11):
 
 if __name__ == "__main__":
     main()
+    plots()
