@@ -12,33 +12,57 @@ size = comm.Get_size()
 #
 MAXIT = 1001
 NSAVE = 100
-Nx, Ny = 64, 64
-dx, dy = 0.5, 0.5
-dt = 0.005
+Nx, Ny = 100, 100
+dx, dy = 1, 1
+
+# Boundary condition
+# 'p' : periodic
+# 'f' : fixed
+x0, xN = 'f', 'f'
+y0, yN = 'f', 'f'
+
+dt = 0.002
 
 #
-Mob   = 5.0
+Mob   = 10.0
 grad_coeff = 0.1
 A, B = 1.0, 1.0
 
 def main():
+    if rank == 0:
+        flag_stability = check_stability()
+        if not flag_stability: exit
+
     # Initializaition
-    Ngr = 1
+    Ngr = 10
     ETAS = np.zeros((Ngr, Nx, Ny))
-    R = 5
-    np.random.seed(1234)
+    R = 25
+    #np.random.seed(1234)
     if rank == 0 :
         for N in range(Ngr):
-            x0 = np.random.randint(low=0,high=Nx)
-            y0 = np.random.randint(low=0,high=Ny)
+            xc = np.random.randint(low=0,high=Nx)
+            yc = np.random.randint(low=0,high=Ny)
             for x in range(Nx):
                 for y in range(Ny):
-                    # Periodic boundary
-                    if np.fabs(x0-x) > Nx//2: x += np.sign(x0-x)*Nx
-                    if np.fabs(y0-y) > Ny//2: y += np.sign(y0-y)*Ny
-                    if ((x0 - x)**2 + (y0 - y)**2)**0.5 < R:
+                    if x0[0] == 'p':
+                        if np.fabs(xc-x) > Nx//2 and np.sign(xc-x) < 0: x -= Nx
+                    elif x0[0] == 'f':
+                        if np.fabs(xc-x) > Nx//2 and np.sign(xc-x) < 0: x = xc
+                    if xN[0] == 'p':
+                        if np.fabs(xc-x) > Nx//2 and np.sign(xc-x) > 0: x += Nx
+                    elif xN[0] == 'f':
+                        if np.fabs(xc-x) > Nx//2 and np.sign(xc-x) > 0: x = xc
+                    if y0[0] == 'p':
+                        if np.fabs(yc-y) > Ny//2 and np.sign(yc-y) < 0: y -= Ny
+                    elif y0[0] == 'f':
+                        if np.fabs(yc-y) > Nx//2 and np.sign(yc-y) < 0: y = yc
+                    if yN[0] == 'p':
+                        if np.fabs(yc-y) > Ny//2 and np.sign(yc-y) > 0: y += Ny
+                    elif y0[0] == 'f':
+                        if np.fabs(yc-y) > Nx//2 and np.sign(yc-y) > 0: y = yc
+                    if ((xc - x)**2 + (yc - y)**2)**0.5 < R:
                         ETAS[N][x%Nx][y%Ny] = 1.0
-    comm.Barrier()
+    ETAS = comm.reduce(ETAS)
     ETAS = comm.bcast(ETAS)
 
     # Evolve
@@ -92,28 +116,80 @@ def main():
     return 0
 
 def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
-    idx = (x+1) % Nx
-    idy = (y+1) % Ny
-    res = (Grid[idx-2][y] + Grid[idx][y] - 2*Grid[x][y])/dx**2\
-        + (Grid[x][idy-2] + Grid[x][idy] - 2*Grid[x][y])/(dy**2)
+    if x0[0] == 'p':   idx0 = x - 1
+    elif x0[0] == 'f':
+        if x == 0: idx0 = x
+        else:      idx0 = x - 1
+    if xN[0] == 'p':   idxN = (x+1)%Nx
+    elif xN[0] == 'f':
+        if x == Nx-1: idxN = x
+        else:         idxN = x + 1
+    if y0[0] == 'p':   idy0 = y - 1
+    elif y0[0] == 'f':
+        if y == 0: idy0 = y
+        else:      idy0 = y - 1
+    if yN[0] == 'p':   idyN = (y+1)%Ny
+    elif yN[0] == 'f':
+        if y == Ny-1: idyN = y
+        else:         idyN = y + 1
+    res = (Grid[idx0][y] + Grid[idxN][y] - 2*Grid[x][y])/dx**2\
+        + (Grid[x][idy0] + Grid[x][idyN] - 2*Grid[x][y])/dy**2
     return res
 
-def plots(PATH='./'):
-    STEP = np.arange(0,MAXIT,NSTEP)
-    fig, ax = plt.subplots(1,len(STEP), figsize=((len(STEP)*5,5))
-    for i, step in enumerate(STEP):
+def check_stability():
+    res = (Mob*dt)*(1/dx**2+1/dy**2)
+    if res < 0.25:
+        if rank==0:
+            print(f"Maybe stable. {res:.2f} is less than 0.25.")
+            return True
+    else: 
+        if rank==0:
+            print(f"Maybe unstable. {res:.2f} is greater than 0.25.")
+            return False
+
+def plot_res(PATH='./', nrow=1):
+    STEP = np.arange(0,MAXIT,NSAVE)
+    NIMG = len(STEP)
+    if NIMG == 1:
+        fig, ax = plt.subplots(1, NIMG, figsize=(5,5))
         SHOW = np.zeros((Nx,Ny))
-        with open(f'{PATH}/data{step:05d}.pickle','rb') as f:
+        with open(f'data{0:05d}.pickle','rb') as f:
             Grid = pickle.load(f)
         for N in range(len(Grid)):
-            Grid[N][Grid[N] < 0.9] = 0.0
             SHOW += Grid[N][:]*(N+1)
-        ax[n].imshow(SHOW, vmin=0, vmax=N)
-        ax[n].set_title(f'Time = {dt*step:.1f} unit time')
-        ax[n].set_xlabel(f'{dx*Nx:.1f} unit dist')
+        ax.imshow(SHOW, vmin=0, vmax=len(Grid))
+        ax.set_title(f'Time = {0:.1f} unit time')
+        ax.set_xlabel(f'{dx*Nx:.2f} unit distance')
+    else:
+        if nrow > 1:
+            if NIMG % nrow != 0:
+                fig, ax = plt.subplots(nrow+1, NIMG//nrow, figsize=(NIMG//nrow*5,5*nrow))
+            if NIMG % nrow == 0:
+                fig, ax = plt.subplots(nrow, NIMG//nrow, figsize=(NIMG//nrow*5,5*nrow))
+            for n in range(NIMG):
+                SHOW = np.zeros((Nx,Ny))
+                with open(f'data{n*NSAVE:05d}.pickle','rb') as f:
+                    Grid = pickle.load(f)
+                for N in range(len(Grid)):
+                    SHOW += Grid[N][:]*(N+1)
+                ax[n//(NIMG//nrow)][n%(NIMG//nrow)].imshow(SHOW, vmin=0, vmax=len(Grid))
+                ax[n//(NIMG//nrow)][n%(NIMG//nrow)].set_title(f'Time = {dt*n*NSAVE:.1f} unit time')
+                ax[n//(NIMG//nrow)][n%(NIMG//nrow)].set_xlabel(f'{dx*Nx:.2f} unit distance')
+        elif nrow == 1:
+            fig, ax = plt.subplots(1, NIMG, figsize=(NIMG*5,5))
+            for n in range(NIMG):
+                SHOW = np.zeros((Nx,Ny))
+                with open(f'data{n*NSAVE:05d}.pickle','rb') as f:
+                    Grid = pickle.load(f)
+                for N in range(len(Grid)):
+                    SHOW += Grid[N][:]*(N+1)
+                ax[n].imshow(SHOW, vmin=0, vmax=len(Grid))
+                ax[n].set_title(f'Time = {dt*n*NSAVE:.1f} unit time')
+                ax[n].set_xlabel(f'{dx*Nx:.2f} unit distance')
+    plt.tight_layout()
     plt.show()
     return 0
 
 if __name__ == "__main__":
     main()
-    plots()
+    if rank==0: plot_res(nrow=3)
