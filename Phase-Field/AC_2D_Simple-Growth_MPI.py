@@ -139,13 +139,11 @@ def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
 def check_stability():
     res = (Mob*dt)*(1/dx**2+1/dy**2)
     if res < 0.25:
-        if rank==0:
-            print(f"Maybe stable. {res:.2f} is less than 0.25.")
-            return True
+        print(f"Maybe stable. {res:.2f} is less than 0.25.")
+        return True
     else: 
-        if rank==0:
-            print(f"Maybe unstable. {res:.2f} is greater than 0.25.")
-            return False
+        print(f"Maybe unstable. {res:.2f} is greater than 0.25.")
+        return False
 
 def plot_res(PATH='./', nrow=1):
     STEP = np.arange(0,MAXIT,NSAVE)
