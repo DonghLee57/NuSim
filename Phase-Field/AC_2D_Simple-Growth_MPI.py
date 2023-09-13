@@ -82,8 +82,6 @@ def main():
             if rank == size - 1:
                 for x in range(rank*psize,Nx):
                     for y in range(Ny):
-                        idx = (x+1) % Nx
-                        idy = (y+1) % Ny
                         Laplacian_ETAS[x][y] = lap_2D(ETAS[N], x, y, dx, dy, Nx, Ny)
                         SUM_eta_sq = 0
                         for ngr in range(Ngr):
@@ -92,8 +90,6 @@ def main():
             else:
                 for x in range(rank*psize,(rank+1)*psize):
                     for y in range(Ny):
-                        idx = (x+1) % Nx
-                        idy = (y+1) % Ny
                         Laplacian_ETAS[x][y] = lap_2D(ETAS[N], x, y, dx, dy, Nx, Ny)
                         SUM_eta_sq = 0
                         for ngr in range(Ngr):
