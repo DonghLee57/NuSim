@@ -23,7 +23,7 @@ y0, yN = 'f', 'f'
 
 dt = 0.002
 
-#
+# Mob is independent on Nx, Ny
 Mob   = 10.0
 grad_coeff = 0.1
 A, B = 1.0, 1.0
@@ -134,7 +134,7 @@ def plot_res(PATH='./', nrow=1):
     if NIMG == 1:
         fig, ax = plt.subplots(1, NIMG, figsize=(5,5))
         SHOW = np.zeros((Nx,Ny))
-        with open(f'data{0:05d}.pickle','rb') as f:
+        with open(f'{PATH}/data{0:05d}.pickle','rb') as f:
             Grid = pickle.load(f)
         for N in range(len(Grid)):
             SHOW += Grid[N][:]*(N+1)
@@ -149,7 +149,7 @@ def plot_res(PATH='./', nrow=1):
                 fig, ax = plt.subplots(nrow, NIMG//nrow, figsize=(NIMG//nrow*5,5*nrow))
             for n in range(NIMG):
                 SHOW = np.zeros((Nx,Ny))
-                with open(f'data{n*NSAVE:05d}.pickle','rb') as f:
+                with open(f'{PATH}/data{n*NSAVE:05d}.pickle','rb') as f:
                     Grid = pickle.load(f)
                 for N in range(len(Grid)):
                     SHOW += Grid[N][:]*(N+1)
@@ -160,7 +160,7 @@ def plot_res(PATH='./', nrow=1):
             fig, ax = plt.subplots(1, NIMG, figsize=(NIMG*5,5))
             for n in range(NIMG):
                 SHOW = np.zeros((Nx,Ny))
-                with open(f'data{n*NSAVE:05d}.pickle','rb') as f:
+                with open(f'{PATH}/data{n*NSAVE:05d}.pickle','rb') as f:
                     Grid = pickle.load(f)
                 for N in range(len(Grid)):
                     SHOW += Grid[N][:]*(N+1)
