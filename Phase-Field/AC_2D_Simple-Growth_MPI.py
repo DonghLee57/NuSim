@@ -29,10 +29,6 @@ grad_coeff = 0.1
 A, B = 1.0, 1.0
 
 def main():
-    if rank == 0:
-        flag_stability = check_stability()
-        if not flag_stability: exit
-
     # Initializaition
     Ngr = 10
     ETAS = np.zeros((Ngr, Nx, Ny))
@@ -132,15 +128,6 @@ def lap_2D(Grid, x, y, dx, dy, Nx, Ny):
         + (Grid[x][idy0] + Grid[x][idyN] - 2*Grid[x][y])/dy**2
     return res
 
-def check_stability():
-    res = (Mob*dt)*(1/dx**2+1/dy**2)
-    if res < 0.25:
-        print(f"Maybe stable. {res:.2f} is less than 0.25.")
-        return True
-    else: 
-        print(f"Maybe unstable. {res:.2f} is greater than 0.25.")
-        return False
-
 def plot_res(PATH='./', nrow=1):
     STEP = np.arange(0,MAXIT,NSAVE)
     NIMG = len(STEP)
@@ -184,6 +171,18 @@ def plot_res(PATH='./', nrow=1):
     plt.show()
     return 0
 
+def check_stability():
+    res = (Mob*dt)*(1/dx**2+1/dy**2)
+    if res < 0.25:
+        print(f"Maybe stable. {res:.2f} is less than 0.25.")
+        return True
+    else: 
+        print(f"Maybe unstable. {res:.2f} is greater than 0.25.")
+        return False
+
 if __name__ == "__main__":
-    main()
-    if rank==0: plot_res(nrow=3)
+    if check_stability():
+        main()
+        if rank==0: plot_res(nrow=3)
+    else:
+        sys.exit()
