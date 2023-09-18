@@ -10,6 +10,7 @@ using namespace std;
 
 // Discretization parameters
 const int MAXIT =  300;    // Iteration number
+const int FROMIT = 0;      // Continue from FROMIT
 const int NSTEP =  100;    // Step size for save
 const int Ngr=  10;        // The number of grains
 const int Nx = 100;        // Discretization x-direction
@@ -31,11 +32,13 @@ double ETAS_new [Ngr][Mx][My] = {0};
 double df       [Mx][My] = {0};
 double Lap_ETAS   = 0;
 double SUM_eta_sq = 0;
+int    MAX_Ngr    = Ngr;
 
 // Functions
 int check_stab();
 double lap_2D(double Grid[Mx][My], int x, int y, double dx, double dy, int Nx, int Ny);
 void SAVE(int step, int Ngr);
+void LOAD(int step, int Ngr);
 
 int main()
 {
@@ -56,14 +59,20 @@ int main()
         } 
     }
 
+    // Load data
+    if (FROMIT > 0) {
+        for (int n=0; n < Ngr; n++)
+            LOAD(FROMIT, n);
+    }
+
     // Evolve
     #pragma omp parallel
     //int N_THR = omp_get_num_threads();
     cout << to_string(omp_get_num_threads()) << " threads\n";
-    for (int k=0; k <= MAXIT; k++) {
+    for (int k=FROMIT+1; k <= FROMIT+MAXIT; k++) {
         // Save data
         if (k % NSTEP == 0){
-            printf("%d/%d\n",k,MAXIT);
+            printf("%d/%d\n",k,FROMIT+MAXIT);
             for (int n=0; n < Ngr; n++){
             SAVE(k, n);
             }
@@ -74,11 +83,9 @@ int main()
             for (int y=1; y<Ny+1; y++) {
                 SUM_eta_sq = 0;
                 for (int ngr=0; ngr < Ngr; ngr++){
-                    if (N != ngr)
-                        SUM_eta_sq = SUM_eta_sq + pow(ETAS[ngr][x][y],2);
+                    if (N != ngr) {SUM_eta_sq = SUM_eta_sq + pow(ETAS[ngr][x][y],2);}
                 }
                 df[x][y] = -A*ETAS[N][x][y] + B*pow(ETAS[N][x][y],3) + 2*ETAS[N][x][y]*SUM_eta_sq;
-                //printf("%d %d %.4f %.4f %.4f\n",x-1, y-1, SUM_eta_sq, df[x][y], ETAS[N][x][y]);
             }
             }
             for (int x=1; x<Nx+1; x++){
@@ -136,12 +143,36 @@ double lap_2D(double Grid[Mx][My], int x, int y, double dx, double dy, int Nx, i
 void SAVE(int step, int Ngr)
 {
     ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(Ngr)+ ".dat");
+    int NSITE = 0;
     for (int x=1; x<Nx+1; x++) {
         for (int y=1; y<Ny+1; y++) {
+        if (ETAS[Ngr][x][y] > 0.9) {NSITE = NSITE + 1;}
         myfile << double(ETAS[Ngr][x][y]);
         if (y < Ny) { myfile << "  ";}
         }
         myfile << "\n";
+    }
+    if (NSITE == 0) {
+        MAX_Ngr = MAX_Ngr - 1;
+        printf("Effective %d grains are in my system.\n", MAX_Ngr);
+    }
+    myfile.close();
+}
+
+void LOAD(int step, int Ngr)
+{
+    ifstream myfile("PhaseField_" + to_string(step) + "_" + to_string(Ngr)+ ".dat");
+    int NSITE = 0;
+    for (int x=1; x<Nx+1; x++) {
+        for (int y=1; y<Ny+1; y++) {
+        myfile >> ETAS[Ngr][x][y];
+        if (ETAS[Ngr][x][y] > 0.9) {NSITE = NSITE + 1;}
+        }
+        myfile << "\n";
+    }
+    if (NSITE == 0) {
+        MAX_Ngr = MAX_Ngr - 1;
+        printf("Effective %d grains are in my system.\n", MAX_Ngr);
     }
     myfile.close();
 }
