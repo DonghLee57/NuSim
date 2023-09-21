@@ -100,28 +100,25 @@ int main(int argc, char **argv)
             }
             // MPI comm
             MPI_Barrier(MPI_COMM_WORLD);
-            if (rank == size-1){
-                for (int x=rank*psize+1; x<Nx+1; x++) 
-                MPI_Send(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-            } else {
-                for (int x=rank*psize+1; x<(rank+1)*psize+1; x++) 
-                MPI_Send(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
-            }
-
-            MPI_Barrier(MPI_COMM_WORLD);
-            if (rank == 0) {
-                for (int r = 1; r < size; r++) {
-                    if (r == size-1) {
-                        for (int x=r*size+1; x<Nx+1; x++)
+            if (rank == size -1){
+                for (int x=rank*psize+1; x<Nx+1; x++)
+                    MPI_Send(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+            } else if (rank != size -1 && rank != 0){
+                for (int x=rank*psize+1; x<(rank+1)*psize+1; x++)
+                    MPI_Send(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, 0, MPI_COMM_WORLD);
+            } else if (rank == 0){
+                for (int r=1; r <  size; r++){
+                    if (r == size -1){
+                        for (int x=r*psize+1; x<Nx+1; x++)
                         MPI_Recv(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     } else {
-                        for (int x=r*size+1; x<(r+1)*size+1; x++)
+                        for (int x=r*psize+1; x<(r+1)*psize+1; x++)
                         MPI_Recv(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                     }
                 }
-                for (int n=0; n<Nx+1; n++)
-                MPI_Bcast(ETAS_new[n], sizeof(ETAS_new[n])/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
             }
+            for (int x=1; x<Nx+1; x++)
+            MPI_Bcast(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
             MPI_Barrier(MPI_COMM_WORLD);
         } // Ngr loop
 
@@ -147,7 +144,6 @@ int main(int argc, char **argv)
 
     MPI_Barrier(MPI_COMM_WORLD);
     MPI_Finalize();
-
     return 0; 
 }
 
@@ -184,71 +180,3 @@ void SAVE(int step, int Ngr)
     }
     myfile.close();
 }
-
-/*
-#include <cstdlib>
-#include <iostream>
-#include <fstream>
-#include <sstream>
-#include <string>
-#include <cmath>
-#include <random>
-#include <mpi.h>
-using namespace std;
-
-int main(int argc, char **argv)
-{
-    int rank, size, psize;
-    MPI_Init(&argc, &argv);
-    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
-    MPI_Comm_size(MPI_COMM_WORLD, &size);
-    psize = 4 / size;
-
-    int MAT[4][4] = {0};
-
-    for (int n=rank*psize; n<(rank+1)*psize; n++){
-    printf(" %d ", rank);
-    for (int m=0; m<4; m++){
-        MAT[n][m] = rank;
-        printf(" %d ", MAT[n][m]);
-    }
-    printf(" \n ");
-    }
-
-    MPI_Barrier(MPI_COMM_WORLD);
-    printf(" \n ");
-    
-    //for (int r = 1; r < size; r++) {
-        //for (int n=r*size; n<(r+1)*size; n++){
-        for (int n=rank*size; n<(rank+1)*size; n++){
-            MPI_Send(MAT[n], sizeof(MAT[n])/sizeof(int), MPI_INT, 0, 0, MPI_COMM_WORLD);
-        }
-    //}
-    MPI_Barrier(MPI_COMM_WORLD);
-
-    if (rank ==0){
-    for (int r = 1; r < size; r++) {
-        for (int n=r*size; n<(r+1)*size; n++){
-        MPI_Recv(MAT[n], sizeof(MAT[n])/sizeof(int), MPI_INT, r, 0, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-        }
-    }
-    for (int n=0; n<4; n++){
-        MPI_Bcast(MAT[n], sizeof(MAT[n])/sizeof(int), MPI_INT, 0, MPI_COMM_WORLD);
-    }
-    }
-    MPI_Barrier(MPI_COMM_WORLD);
-
-
-    for (int n=0; n<4; n++){
-    printf(" %d ", rank);
-    for (int m=0; m<4; m++){
-        printf(" %d ", MAT[n][m]);
-    }
-    printf(" \n ");
-    }
-
-
-    MPI_Finalize();
-    return 0; 
-}
-*/
