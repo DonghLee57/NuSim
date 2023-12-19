@@ -13,9 +13,10 @@ const double e  = 1.602177e-19; // [C]
 const double kb = 1.380649e-23/e; // [eV/K]
 
 // Discretization parameters
+const int DIM = 3;         // N-dimension
 const int MAXIT = 1000;    // Iteration number
 const int NSTEP =  100;    // Step size for save
-const int Ngr=  10;        // The number of grains
+const int NMAX=  10;        // The number of grains
 const int Nx = 100;        // Discretization x-direction
 const int Ny = 100;        // Discretization y-direction
 const int Nz =   1;        // Discretization y-direction
@@ -31,56 +32,87 @@ const int Mx = Nx + 2 * BCells;
 const int My = Ny + 2 * BCells;
 const int Mz = Nz + 2 * BCells;
 
-double ETAS     [Ngr][Mx][My][Mz] = {0};
-double ETAS_new [Ngr][Mx][My][Mz] = {0};
+double ETAS_TOT [Mx][My][Mz] = {0};
+double ETAS     [NMAX][Mx][My][Mz] = {0};
+double ETAS_new [NMAX][Mx][My][Mz] = {0};
 double df         = 0;
 double Lap_ETAS   = 0;
 double SUM_eta_sq = 0;
 
 // Functions
-int check_stab();
+int check_stab(int dim);
 double laplacian(double Grid[Mx][My][Mz], int x, int y, int z, double dx, double dy, double dz, int Nx, int Ny, int Nz);
-double prob_nucleation(T);
-double growth_velocity(T);
-void SAVE(int step, int Ngr);
+double COUNT_AMOR(double Grid[Mx][My][Mz]);
+double PROB_NUC(double T, double Va)
+double growth_velocity(double T);
+void SAVE(int step, int NMAX);
 
 int main(int argc, char **argv)
 {
+    int Ngr = 0;
+    int Ca;
+    double Va, Xa;
+    
+    
     int rank, size, psize;
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &size);
     psize = Nx / size;
 
-    if (!check_stab()){
+    if (!check_stab(DIM)){
         MPI_Finalize();
         return 1;
     }
 
     // Initiallization
     srand(230917);
-    for (int n=0; n < Ngr; n++) {
-        int xc = rand() % (Nx) + 1;
-        int yc = rand() % (Ny) + 1;
-        for (int x=1; x<Nx+1; x++) {
-            for (int y=1; y<Ny+1; y++) {
-                if (sqrt(pow(xc-x,2) + pow(yc-y,2)) < 1.2)
-                {
-                    ETAS[n][x][y] = 1.0;
-                }
+    int xc = rand() % (Nx) + 1;
+    int yc = rand() % (Ny) + 1;
+    int zc = rand() % (Nz) + 1;
+    for (int x=1; x<Nx+1; x++) {
+        for (int y=1; y<Ny+1; y++) {
+            for (int z=1; z<Nz+1; z++) {
+                if (sqrt((xc-x)*(xc-x) + (yc-y)*(yc-y) + (zc-z)*(zc-z)) < 1.2)
+                ETAS[0][x][y][z] = 1.0;
             }
         } 
     }
-    /*
+    ETAS_TOT = ETAS_TOT + ETAS[0];
+    
     // Evolve
     for (int k=0; k <= MAXIT; k++) {
         // Save data
         if (k % NSTEP == 0 && rank == 0){
             printf("%d/%d\n",k,MAXIT);
-            for (int n=0; n < Ngr; n++){
+            for (int n=0; n < NMAX; n++){
                 SAVE(k, n);
             }
         }
+        
+        Ca = COUNT_AMOR(ETAS_TOT);
+        Va = Ca*dx*dy*dz;
+        Xa = Ca/Nx*Ny*Nz;
+        if (PROB_NUC(T, Va) > rand() && Xa < 0.9 && Ngr < NMAX)
+        {
+            Ngr++;
+            xc, yc, zc = rand() % (Nx) + 1, rand() % (Ny) + 1, rand() % (Nz) + 1;
+            while (ETAS_TOT[xc][yc][zc] > 0.1){
+                xc, yc, zc = rand() % (Nx) + 1, rand() % (Ny) + 1, rand() % (Nz) + 1;
+            }
+            for (int x=1; x<Nx+1; x++) {
+                for (int y=1; y<Ny+1; y++) {
+                    for (int z=1; z<Nz+1; z++) {
+                    if (sqrt((xc-x)*(xc-x) + (yc-y)*(yc-y) + (zc-z)*(zc-z)) < 1.2)
+                    ETAS[Ngr][x][y][z] = 1.0;
+                    }
+                } 
+            }
+        }
+
+        
+    }
+    /*
         // Calculate
         for (int N=0; N < Ngr; N++){
             if (rank == size - 1){
@@ -126,11 +158,11 @@ int main(int argc, char **argv)
             for (int x=1; x<Nx+1; x++)
             MPI_Bcast(ETAS_new[N][x], sizeof(ETAS_new[N][x])/sizeof(double), MPI_DOUBLE, 0, MPI_COMM_WORLD);
             MPI_Barrier(MPI_COMM_WORLD);
-        } // Ngr loop
+        } // NMAX loop
 
 
         // Periodic boundary condition
-        for (int N=0; N < Ngr; N++){
+        for (int N=0; N < NMAX; N++){
         for (int y=0; y < My; y++){
             ETAS_new[N][0][y]    =  ETAS_new[N][Nx][y];
             ETAS_new[N][Nx+1][y] =  ETAS_new[N][1][y];
@@ -142,7 +174,7 @@ int main(int argc, char **argv)
         }
 
         // ETAS 
-        for (int N=0; N < Ngr; N++)
+        for (int N=0; N < NMAX; N++)
         for (int x=0; x<Mx; x++) 
         for (int y=0; y<My; y++)
             ETAS[N][x][y] = ETAS_new[N][x][y];
@@ -154,14 +186,15 @@ int main(int argc, char **argv)
     return 0; 
 }
 
-int check_stab()
+int check_stab(int dim)
 {
-    float res = (Mob*dt)*(1/pow(dx,2)+1/pow(dy,2));
-    if (res < 0.25) {
-        printf("Maybe stable. %.2f is less than 0.25.\n", res);
+    float res = (Mob*dt)*(1/(dx*dx)+1/(dy*dy)+1/(dz*dz));
+    float crit= 1/2/dim
+    if (res < crit) {
+        printf("Maybe stable. %.2f is less than %.2f.\n", res, crit);
         return 1;
     } else {
-        printf("Maybe unstable. %.2f is greater than 0.25.\n", res);
+        printf("Maybe unstable. %.2f is greater than %.2f.\n", res, crit);
         return 0;
     }
 }
@@ -171,20 +204,36 @@ double laplacian(double Grid[Mx][My][Mz], int x, int y, int z, double dx, double
     int idx0, idxN = x - 1, x + 1;
     int idy0, idyN = y - 1, y + 1;
     int idz0, idzN = z - 1, z + 1;
-    return (Grid[idx0][y][z] + Grid[idxN][y][z] - 2*Grid[x][y][z])/pow(dx,2) + (Grid[x][idy0][z] + Grid[x][idyN][z] - 2*Grid[x][y][z])/pow(dy,2) + (Grid[x][y][idz0] + Grid[x][y][idzN] - 2*Grid[x][y][z])/pow(dz,2);
+    return (Grid[idx0][y][z] + Grid[idxN][y][z] - 2*Grid[x][y][z])/(dx*dx) + (Grid[x][idy0][z] + Grid[x][idyN][z] - 2*Grid[x][y][z])/(dy*dy) + (Grid[x][y][idz0] + Grid[x][y][idzN] - 2*Grid[x][y][z])/(dz*dz);
 }
 
-double prob_nucleation(T)
+double COUNT_amor(double Grid[Mx][My][Mz])
+{
+    int count = 0;
+    for (int x=1; x<Nx+1; x++) {
+        for (int y=1; y<Ny+1; y++) {
+            for (int z=1; z<Nz+1; z++) {
+                if (Grid[x][y][z] < 0.5)
+                {
+                count++;
+                }
+            }
+        }
+    }
+    return count
+}
+
+double PROB_NUC(double T, double Va)
 {
     // Mater. Res. Soc. Symp. Proc. 989, 0989-A06-17 (2007)
     double beta   = 1/(kb*T);
     double I0 = 1.7e+44; // [m-3sec-1]
     double Ea = 5.3;     // [eV]
     double I_nuc = I0*exp(-beta*Ea);
-    return 1-exp(-I_nuc*dx*dy*dz*dt);
+    return 1-exp(-I_nuc*Va*dt);
 }
 
-double growth_velocity(T)
+double growth_velocity(double T)
 {
     // Mater. Res. Soc. Symp. Proc. 989, 0989-A06-17 (2007)
     double beta   = 1/(kb*T);
@@ -193,12 +242,12 @@ double growth_velocity(T)
     return u0*exp(-beta*Ea);
 }
 
-void SAVE(int step, int Ngr)
+void SAVE(int step, int NMAX)
 {
-    ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(Ngr)+ ".dat");
+    ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(NMAX)+ ".dat");
     for (int x=1; x<Nx+1; x++) {
         for (int y=1; y<Ny+1; y++) {
-        myfile << fixed << setprecision(4) << double(ETAS[Ngr][x][y]);
+        myfile << fixed << setprecision(4) << double(ETAS[NMAX][x][y]);
         if (y < Ny) { myfile << "  ";}
         }
         myfile << "\n";
