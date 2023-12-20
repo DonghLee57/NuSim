@@ -1,3 +1,8 @@
+// *2D slice plot
+// *Grain size analysis
+// performance check: mpicxx (.cpp) -std=c++11 -O3...
+// 3D file format > visualization
+
 #include <cstdlib>
 #include <iostream>
 #include <fstream>
