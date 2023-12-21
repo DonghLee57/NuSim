@@ -14,11 +14,20 @@ def delta_G(T):
 def delta_Gstar(T):
     return (16*np.pi*gamma**3)/(3*delta_G(T)**2)
 
-def I_nuc(T, Ea=3.3):
-    I0 = 8*(1E+40) # nm-3s-1
+def I_nuc(T):
+    I0 = 8E+45 # nm-3s-1
+    Ea = 3.3
     return I0*np.exp(-(Ea + delta_Gstar(T))/(kb_eV*T))
 
-fig, ax = plt.subplots(1,3, figsize=(15,5))
+def Vg(T):
+    V0 = 5E+24
+    Ea = 2.3
+    return V0*np.exp(-Ea/(kb_eV*T))
+
+def Xc(T,time):
+    return 1-np.exp(-np.pi*Vg(T)**3*I_nuc(T)*time**4/3)
+
+fig, ax = plt.subplots(1,4, figsize=(20,5))
 T = np.linspace(300,850)
 x = 1/kb_eV/T
 ax[0].plot(T, delta_G(T))
@@ -29,5 +38,8 @@ ax[2].semilogy(x, I_nuc(T),c='k')
 ax[2].set_xlim(10,35)
 ax[2].set_ylim(bottom=1E-15)
 ax[2].axvline(1/kb_eV/T_melt,ls=':',c='k')
+time = np.linspace(0,50)
+ax[3].plot(time, Xc(190+273, time))
+ax[3].set_ylim([0,1])
 plt.tight_layout()
 plt.show()
