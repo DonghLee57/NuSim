@@ -6,6 +6,7 @@ kb_eV = constants.k/constants.e # eV/K
 Vmolar = 1.205883E-5*1E+27 # nm^3/mol
 
 T_melt= 1685 # K
+# 340~450 mJ/m2
 gamma = 0.45/constants.e/1E+18 # eV/nm^2
 print(f"Interfacial energy: {gamma:.2f} eV/nm^2")
 dHc   = 11900/constants.e/Vmolar # eV/nm^3 Heat of crystallization
