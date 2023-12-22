@@ -1,15 +1,15 @@
-# ACS Omega 8, 3329 (2023)
+# Journal of Crystal Growth 585, 126590 (2022), ACS Omega 8, 3329 (2023)
 
 # gamma: interfacial energy
 # delta: interfacial width
 # b: ~2.2
 
 def L(T):
-    A = 1
-    B = 1
+    A = 1 # m^4/(J*s)
+    B = 1 # unitless
     T_melt = 1000
     delta_Tr = (1-T/T_melt)
-    spacing = 2.4
+    spacing = 2.4 # angstrom
     return A*(D(T)*delta_Tr/(2*np.pi*spacing**2))**B
 
 def K():
