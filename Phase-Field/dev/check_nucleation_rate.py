@@ -25,15 +25,15 @@ def delta_Gstar(T, gamma):
     return (16*np.pi*gamma**3)/(3*delta_G(T)**2)
 
 def I_nuc(T,gamma):
-    I0 = 1E+39 # nm-3s-1
+    I0 = 1E+39 # m-3s-1
     return I0*np.exp(-(delta_Gstar(T,gamma))/(kb_eV*T))
 
 def I_nuc2(T):
-    I0 = 1.7E+44 # nm-3s-1
+    I0 = 1.7E+44 # m-3s-1
     return I0*np.exp(-(5.3)/(kb_eV*T))
 
 def I_nuc3(T,gamma):
-    I0 = 1E+53 # nm-3s-1
+    I0 = 1E+53 # m-3s-1
     return I0*np.exp(-(5.7+delta_Gstar(T,gamma))/(kb_eV*T))
 
 
