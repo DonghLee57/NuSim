@@ -18,11 +18,13 @@ const int Ny = 100;
 const int Nz = 1;
 const int BCells = 1;
 
-double dx = 1.0, dy = 1.0, dz = 1.0;  // Grid spacing in x-,y-,z-direction [Ang]
-double dt = 0.005;                     // Size of time step [ns]
-double Mob = 10.0;                     // Mobility [Angs^3/(eV/ns)]
+double dx = 1.0, dy = 1.0, dz = 1.0;   // Grid spacing in x-,y-,z-direction [Ang]
+double dt = 0.001;                     // Size of time step [ns]
+double Mob = 1.0;                     // Mobility [Angs^3/(eV/ns)]
 double grad_coeff = 0.1;               // Gradient coefficient
 double A = 1.0, B = 1.0, Gam = 1.0;
+double Lap_ETAS = 0;
+double df= 0;
 
 // Phase-field storage
 const int Mx = Nx + 2 * BCells;
@@ -63,15 +65,15 @@ int main()
     int rx = distrX(gen);
     int ry = distrY(gen);
     int rz = distrZ(gen);
-
-    for (auto& plane : ETAS[0]) {
-        for (auto& row : plane) {
-            for (double& value : row) {
-                const double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
-                value = (distance < 1.2) ? 1.0 : 0.0;
+    for (int x = 1; x < Nx + 1; ++x) {
+        for (int y = 1; y < Ny + 1; ++y) {
+            for (int z = 1; z < Nz + 1; ++z) {
+                double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
+                ETAS[0][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
             }
         }
     }
+    Ngr++;
 
     ETAS_TOT = ETAS[0];
 
@@ -103,33 +105,35 @@ int main()
                 rz = distrZ(gen);
             }
 
-            for (auto& grain : ETAS[Ngr]) {
-                for (auto& plane : grain) {
-                    for (double& value : plane) {
-                        const double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
-                        value = (distance < 1.2) ? 1.0 : 0.0;
+            for (int N=0; N < Ngr; N++) {
+            for (int x = 1; x < Nx + 1; ++x) {
+                for (int y = 1; y < Ny + 1; ++y) {
+                    for (int z = 1; z < Nz + 1; ++z) {
+                        double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
+                        ETAS[N][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
                     }
                 }
+            }
             }
         }
 
         // Calculate
         for (int N = 0; N < Ngr; ++N) {
-            for (int x = 1; x < Nx + 1; ++x) {
-                for (int y = 1; y < Ny + 1; ++y) {
+        for (int x = 1; x < Nx + 1; ++x) {
+            for (int y = 1; y < Ny + 1; ++y) {
+                for (int z = 1; z < Nz + 1; ++z) {
                     double SUM_eta_sq = 0;
                     for (int ngr = 0; ngr < Ngr; ++ngr) {
                         SUM_eta_sq += std::pow(ETAS[ngr][x][y][z], 2);
                     }
                     df = -A * ETAS[N][x][y][z] + B * std::pow(ETAS[N][x][y][z], 3) +
                          2 * ETAS[N][x][y][z] * (SUM_eta_sq - std::pow(ETAS[N][x][y][z], 2));
-
                     Lap_ETAS = LAPLACIAN(ETAS[N], x, y, z);
                     ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - grad_coeff * Lap_ETAS);
                 }
             }
         }
-
+        }
         // Update ETAS
         ETAS = ETAS_new;
     } // MAXIT loop
@@ -140,7 +144,7 @@ int main()
 int CHECK_STABILITY(int dim)
 {
     float res = (Mob * dt) * (1 / (dx * dx) + 1 / (dy * dy) + 1 / (dz * dz));
-    float crit = 1 / 2 / dim;
+    float crit = 1.0 / 2.0 / dim;
     if (res < crit) {
         std::cout << "Maybe stable. " << res << " is less than " << crit << ".\n";
         return 1;
