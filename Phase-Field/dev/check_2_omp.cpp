@@ -5,23 +5,33 @@
 #include <cmath>
 #include <random>
 #include <algorithm>
+#include <omp.h>
 
-constexpr double e = 1.602177e-19;   // [C]
-constexpr double kb_eV = 1.380649e-23 / e; // [eV/K]
+constexpr double PI = M_PI;
+constexpr double q = 1.602177e-19;         // [C]
+constexpr double kb_eV = 1.380649e-23 / q; // [eV/K]
+constexpr double Tmelt = 1685;             // [K]
+constexpr double Vm = 1.205883199E-5;      // [m3/mol]
+constexpr double GAMMA = 0.38/q;           // Interfacial energy [eV/m2]
+constexpr double delta = 2E-10;            // Interfacial width  [m]
+constexpr double b = 2.2;                  // ~2.2
+constexpr double dHf = 50500/q/Vm;         // [eV/m3]
+constexpr double K = 12*delta*GAMMA/b;     // Gradient coefficient [eV/m]
+constexpr double W = 6*GAMMA*b/delta;      // [eV/m3]
 
+const double Tsim = 1273; // [K]
 const int DIM = 3;
-const int MAXIT = 1000;
-const int NSTEP = 100;
-const int NMAX = 10;
+const int MAXIT = 5000;
+const int NSTEP =  100;
+const int NMAX  = 10;
 const int Nx = 100;
 const int Ny = 100;
-const int Nz = 1;
+const int Nz = 100;
 const int BCells = 1;
 
-double dx = 1.0, dy = 1.0, dz = 1.0;   // Grid spacing in x-,y-,z-direction [Ang]
-double dt = 0.001;                     // Size of time step [ns]
-double Mob = 1.0;                     // Mobility [Angs^3/(eV/ns)]
-double grad_coeff = 0.1;               // Gradient coefficient
+const double dx = 1E-10, dy = 1E-10, dz = 1E-10;  // Grid spacing in x-,y-,z-direction [m]
+const double dt = 100E-9;                         // Size of time step [s]
+const double Mob = 2.8E-24;                       // Mobility [m^3/(eV/s)]
 double A = 1.0, B = 1.0, Gam = 1.0;
 double Lap_ETAS = 0;
 double df= 0;
@@ -65,6 +75,7 @@ int main()
     int rx = distrX(gen);
     int ry = distrY(gen);
     int rz = distrZ(gen);
+    #pragma omp parallel for
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             for (int z = 1; z < Nz + 1; ++z) {
@@ -106,6 +117,7 @@ int main()
             }
 
             for (int N=0; N < Ngr; N++) {
+            #pragma omp parallel for
             for (int x = 1; x < Nx + 1; ++x) {
                 for (int y = 1; y < Ny + 1; ++y) {
                     for (int z = 1; z < Nz + 1; ++z) {
@@ -119,6 +131,7 @@ int main()
 
         // Calculate
         for (int N = 0; N < Ngr; ++N) {
+        #pragma omp parallel for
         for (int x = 1; x < Nx + 1; ++x) {
             for (int y = 1; y < Ny + 1; ++y) {
                 for (int z = 1; z < Nz + 1; ++z) {
@@ -129,7 +142,7 @@ int main()
                     df = -A * ETAS[N][x][y][z] + B * std::pow(ETAS[N][x][y][z], 3) +
                          2 * ETAS[N][x][y][z] * (SUM_eta_sq - std::pow(ETAS[N][x][y][z], 2));
                     Lap_ETAS = LAPLACIAN(ETAS[N], x, y, z);
-                    ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - grad_coeff * Lap_ETAS);
+                    ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - K * Lap_ETAS);
                 }
             }
         }
@@ -168,6 +181,7 @@ double LAPLACIAN(const PhaseField3D& Grid, int x, int y, int z)
 int COUNT_AMOR(const PhaseField3D& Grid)
 {
     int count = 0;
+    #pragma omp parallel for
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             for (int z = 1; z < Nz + 1; ++z) {
