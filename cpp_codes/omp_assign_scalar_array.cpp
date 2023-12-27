@@ -14,15 +14,15 @@ int main(){
     count = 0;
     for (int i=0; i<nrow; i++){
         for (int j=0; j<vec.size(); j++){
-			      count = i*j;
+			count = i*j;
             mat[i][j] = i + j;
-			      mat[i][j] = count;
+			mat[i][j] = count;
         }
     }
     for (int i=0; i<nrow; i++){
         for (int j=0; j<vec.size(); j++){
             cout << mat[i][j] << " ";
-	      }
+		}
         cout << endl;
     }
     cout << count << endl;
@@ -34,18 +34,18 @@ int main(){
     #pragma omp parallel for
     for (int i = 0; i < nrow; i++){
         for (int j = 0; j < vec.size(); j++){
-	          count = i*j;
+			count = i*j;
             mat[i][j] = i + j;
             mat[i][j] = count;
         }
-	      #pragma omp critical
-	      cout << i << " " << count << endl;
+		#pragma omp critical
+		cout << i << " " << count << endl;
     }
     cout << "Array: " << endl;
     for (int i = 0; i < nrow; i++){
         for (int j = 0; j < vec.size(); j++){
-            cout << mat[i][j] << " ";
-	      }
+			cout << mat[i][j] << " ";
+		}
         cout << endl;
     }
     cout << "Scalar: " << count << endl;
@@ -55,18 +55,18 @@ int main(){
     #pragma omp parallel for private(count)
     for (int i = 0; i < nrow; i++){
         for (int j = 0; j < vec.size(); j++){
-	          count = i*j;
+			count = i*j;
             mat[i][j] = i + j;
             mat[i][j] = count;
         }
-	      #pragma omp critical
-	      cout << i << " " << count << endl;
+		#pragma omp critical
+		cout << i << " " << count << endl;
     }
     cout << "Array: " << endl;
     for (int i = 0; i < nrow; i++){
         for (int j = 0; j < vec.size(); j++){
             cout << mat[i][j] << " ";
-	      }
+		}
         cout << endl;
     }
     cout << "Scalar: " << count << endl;
