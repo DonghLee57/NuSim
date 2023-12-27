@@ -6,6 +6,7 @@
 #include <random>
 #include <algorithm>
 #include <omp.h>
+using namespace std;
 
 constexpr double PI = M_PI;
 constexpr double q = 1.602177e-19;         // [C]
@@ -41,11 +42,11 @@ const int Mx = Nx + 2 * BCells;
 const int My = Ny + 2 * BCells;
 const int Mz = Nz + 2 * BCells;
 
-using PhaseField3D = std::vector<std::vector<std::vector<double>>>;
+using PhaseField3D = vector<vector<vector<double>>>;
 
-PhaseField3D ETAS_TOT(Mx, std::vector<std::vector<double>>(My, std::vector<double>(Mz, 0.0)));
-std::vector<PhaseField3D> ETAS(NMAX, ETAS_TOT);
-std::vector<PhaseField3D> ETAS_new(NMAX, ETAS_TOT);
+PhaseField3D ETAS_TOT(Mx, vector<vector<double>>(My, vector<double>(Mz, 0.0)));
+vector<PhaseField3D> ETAS(NMAX, ETAS_TOT);
+vector<PhaseField3D> ETAS_new(NMAX, ETAS_TOT);
 
 // Function declarations
 int CHECK_STABILITY(int dim);
@@ -66,11 +67,11 @@ int main()
     }
 
     // Initialization
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_int_distribution<int> distrX(1, Nx);
-    std::uniform_int_distribution<int> distrY(1, Ny);
-    std::uniform_int_distribution<int> distrZ(1, Nz);
+    random_device rd;
+    mt19937 gen(rd());
+    uniform_int_distribution<int> distrX(1, Nx);
+    uniform_int_distribution<int> distrY(1, Ny);
+    uniform_int_distribution<int> distrZ(1, Nz);
 
     int rx = distrX(gen);
     int ry = distrY(gen);
@@ -79,7 +80,7 @@ int main()
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             for (int z = 1; z < Nz + 1; ++z) {
-                double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
+                double distance = sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
                 ETAS[0][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
             }
         }
@@ -92,7 +93,7 @@ int main()
     for (int k = 0; k <= MAXIT; ++k) {
         // Save data
         if (k % NSTEP == 0) {
-            std::cout << k << '/' << MAXIT << '\n';
+            cout << k << '/' << MAXIT << '\n';
             for (int n = 0; n < NMAX; ++n) {
                 SAVE_2D(k, n, 0);
             }
@@ -102,7 +103,7 @@ int main()
         Va = Ca * dx * dy * dz;
         Xa = Ca / (Nx * Ny * Nz);
 
-        std::uniform_real_distribution<double> probDist(0.0, 1.0);
+        uniform_real_distribution<double> probDist(0.0, 1.0);
 
         if (PROB_NUC(dt, Va) > probDist(gen) && Xa < 0.9 && Ngr < NMAX) {
             ++Ngr;
@@ -121,7 +122,7 @@ int main()
             for (int x = 1; x < Nx + 1; ++x) {
                 for (int y = 1; y < Ny + 1; ++y) {
                     for (int z = 1; z < Nz + 1; ++z) {
-                        double distance = std::sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
+                        double distance = sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
                         ETAS[N][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
                     }
                 }
@@ -137,10 +138,10 @@ int main()
                 for (int z = 1; z < Nz + 1; ++z) {
                     double SUM_eta_sq = 0;
                     for (int ngr = 0; ngr < Ngr; ++ngr) {
-                        SUM_eta_sq += std::pow(ETAS[ngr][x][y][z], 2);
+                        SUM_eta_sq += pow(ETAS[ngr][x][y][z], 2);
                     }
-                    df = -A * ETAS[N][x][y][z] + B * std::pow(ETAS[N][x][y][z], 3) +
-                         2 * ETAS[N][x][y][z] * (SUM_eta_sq - std::pow(ETAS[N][x][y][z], 2));
+                    df = -A * ETAS[N][x][y][z] + B * pow(ETAS[N][x][y][z], 3) +
+                         2 * ETAS[N][x][y][z] * (SUM_eta_sq - pow(ETAS[N][x][y][z], 2));
                     Lap_ETAS = LAPLACIAN(ETAS[N], x, y, z);
                     ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - K * Lap_ETAS);
                 }
@@ -159,10 +160,10 @@ int CHECK_STABILITY(int dim)
     float res = (Mob * dt) * (1 / (dx * dx) + 1 / (dy * dy) + 1 / (dz * dz));
     float crit = 1.0 / 2.0 / dim;
     if (res < crit) {
-        std::cout << "Maybe stable. " << res << " is less than " << crit << ".\n";
+        cout << "Maybe stable. " << res << " is less than " << crit << ".\n";
         return 1;
     } else {
-        std::cout << "Maybe unstable. " << res << " is greater than " << crit << ".\n";
+        cout << "Maybe unstable. " << res << " is greater than " << crit << ".\n";
         return 0;
     }
 }
@@ -181,7 +182,7 @@ double LAPLACIAN(const PhaseField3D& Grid, int x, int y, int z)
 int COUNT_AMOR(const PhaseField3D& Grid)
 {
     int count = 0;
-    #pragma omp parallel for
+    #pragma omp parallel for reduction(+ : count)
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             for (int z = 1; z < Nz + 1; ++z) {
@@ -215,10 +216,10 @@ double GR_VEL(double T)
 
 void SAVE_2D(int step, int NMAX, int z)
 {
-    std::ofstream myfile("PhaseField_" + std::to_string(step) + "_" + std::to_string(NMAX) + "_" + std::to_string(z) + ".dat");
+    ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(NMAX) + "_" + to_string(z) + ".dat");
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
-            myfile << std::fixed << std::setprecision(4) << ETAS[NMAX][x][y][z];
+            myfile << fixed << setprecision(4) << ETAS[NMAX][x][y][z];
             if (y < Ny) {
                 myfile << "  ";
             }
