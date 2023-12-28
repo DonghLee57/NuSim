@@ -147,7 +147,7 @@ int main()
                     }
                     df = 30 * pow(ETAS[N][x][y][z],2) * pow(1-ETAS[N][x][y][z],2) * (-dHf * (1 - Tsim/Tmelt))
                        +  2 * W * ETAS[N][x][y][z] * (1 - ETAS[N][x][y][z]) * (1 - 2*ETAS[N][x][y][z])
-                       + 4E+27 * 2 * ETAS[N][x][y][z] * (SUM_eta_sq - pow(ETAS[N][x][y][z],2));
+                       + 2E+29 * 2 * ETAS[N][x][y][z] * (SUM_eta_sq - pow(ETAS[N][x][y][z],2));
                     Lap_ETAS = LAPLACIAN(ETAS[N], x, y, z);
                     ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - K * Lap_ETAS);
                 }
