@@ -21,6 +21,7 @@ constexpr double K = 12*delta*GAMMA/b;     // Gradient coefficient [eV/m]
 constexpr double W = 6*GAMMA*b/delta;      // [eV/m3]
 
 const double Tsim = 1273; // [K]
+const double Rc = 19; // [grid point]
 const int DIM = 3;
 const int MAXIT =    10000;
 const int NSTEP =    1;
@@ -55,7 +56,7 @@ double PROB_NUC(double T, double Va);
 double GR_VEL(double T);
 void SAVE_2D(int step, int NMAX, int z);
 void check_grid(const PhaseField3D& Grid);
-void check_prob_nuc();
+int SORT_GRAIN(vector<PhaseField3D>& NGrid, int Ngr);
 
 int main()
 {
@@ -63,7 +64,7 @@ int main()
     int Ca;
     double Va, Xa;
     double distance;
-
+    double SUM_eta_sq = 0;
 
     //if (!CHECK_STABILITY(DIM)) {
     //    return 1;
@@ -80,36 +81,30 @@ int main()
     int rx = distrX(gen);
     int ry = distrY(gen);
     int rz = distrZ(gen);
+    int z0 = rz;
     #pragma omp parallel for private(distance)
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             for (int z = 1; z < Nz + 1; ++z) {
                 distance = sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
-                ETAS[Ngr][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
-		// Test
-                //ETAS[Ngr][x][y][z] = omp_get_thread_num();
+                ETAS[Ngr][x][y][z] = (distance < Rc) ? 1.0 : 0.0;
             }
         }
     }
     ETAS_TOT = ETAS[Ngr];
-    // Test
-    //cout << "Grain 0" << endl;
-    //check_grid(ETAS[Ngr]);
-    cout << "TOT" << endl;
-    check_grid(ETAS_TOT);
 
     Ngr++;
     // Evolve
     for (int k = 0; k <= MAXIT; ++k) {
-        /*
+        
         // Save data
         if (k % NSTEP == 0) {
             cout << k << '/' << MAXIT << '\n';
             for (int n = 0; n < NMAX; ++n) {
-                SAVE_2D(k, n, 0);
+                SAVE_2D(k, n, z0);
             }
         }
-	*/
+	
         // Test
         Ca = COUNT_AMOR(ETAS_TOT);
         Va = Ca * dx * dy * dz;
@@ -118,14 +113,10 @@ int main()
         cout << "Amor. Vol.: " << Va << " (m^3)"  << endl;
         cout << "Amor. Fraction: " << Xa << endl;
 
-    //check_prob_nuc();
-
-        //if (PROB_NUC(Tsim, Va*1E+15) > probDist(gen) && Xa < 0.9 && Ngr < NMAX) {
-        if (PROB_NUC(Tsim, 1E-16) && Ngr < NMAX) {// > probDist(gen) && Xa < 0.9 && Ngr < NMAX) {
+        if (PROB_NUC(Tsim, Va) > probDist(gen) && Xa > 0.1 && Ngr < NMAX) {
             rx = distrX(gen);
             ry = distrY(gen);
             rz = distrZ(gen);
-
             while (ETAS_TOT[rx][ry][rz] > 0.1) {
                 rx = distrX(gen);
                 ry = distrY(gen);
@@ -136,43 +127,50 @@ int main()
                 for (int y = 1; y < Ny + 1; ++y) {
                     for (int z = 1; z < Nz + 1; ++z) {
                         distance = sqrt((rx - x) * (rx - x) + (ry - y) * (ry - y) + (rz - z) * (rz - z));
-                        ETAS[Ngr][x][y][z] = (distance < 1.2) ? 1.0 : 0.0;
+                        ETAS[Ngr][x][y][z] = (distance < Rc) ? 1.0 : 0.0;
 			ETAS_TOT[x][y][z] = ETAS_TOT[x][y][z] + ETAS[Ngr][x][y][z];
                     }
                 }
             }
             Ngr++;
         }
-    } 
-    check_grid(ETAS_TOT);
-    for (int N = 0; N < Ngr; N++){
-    cout << "Grain " << N <<  endl;
-    check_grid(ETAS[N]);
-    }
-    /*
 
         // Calculate
         for (int N = 0; N < Ngr; ++N) {
-        #pragma omp parallel for
+        #pragma omp parallel for private(SUM_eta_sq, df, Lap_ETAS)
         for (int x = 1; x < Nx + 1; ++x) {
             for (int y = 1; y < Ny + 1; ++y) {
                 for (int z = 1; z < Nz + 1; ++z) {
-                    double SUM_eta_sq = 0;
+                    SUM_eta_sq = 0;
                     for (int ngr = 0; ngr < Ngr; ++ngr) {
                         SUM_eta_sq += pow(ETAS[ngr][x][y][z], 2);
                     }
-                    df = -A * ETAS[N][x][y][z] + B * pow(ETAS[N][x][y][z], 3) +
-                         2 * ETAS[N][x][y][z] * (SUM_eta_sq - pow(ETAS[N][x][y][z], 2));
+                    df = 30 * pow(ETAS[N][x][y][z],2) * pow(1-ETAS[N][x][y][z],2) * (-dHf * (1 - Tsim/Tmelt))
+                       +  2 * W * ETAS[N][x][y][z] * (1 - ETAS[N][x][y][z]) * (1 - 2*ETAS[N][x][y][z]);
                     Lap_ETAS = LAPLACIAN(ETAS[N], x, y, z);
                     ETAS_new[N][x][y][z] = ETAS[N][x][y][z] - dt * Mob * (df - K * Lap_ETAS);
                 }
             }
         }
         }
+
         // Update ETAS
-        ETAS = ETAS_new;
+        //ETAS = ETAS_new;
+        for (int N = 0; N < Ngr; ++N) {
+        #pragma omp parallel for
+        for (int x = 1; x < Nx + 1; ++x) {
+        for (int y = 1; y < Ny + 1; ++y) {
+        for (int z = 1; z < Nz + 1; ++z) {
+            if (N == 0){
+                ETAS_TOT[x][y][z] = ETAS_new[N][x][y][z];
+            } else {
+                ETAS_TOT[x][y][z] += ETAS_new[N][x][y][z];
+            }
+            ETAS[N][x][y][z] = ETAS_new[N][x][y][z];
+        }}}}
+        // position
+        Ngr = SORT_GRAIN_GRID(ETAS, Ngr);
     } // MAXIT loop
-    */
     return 0;
 }
 
@@ -237,7 +235,7 @@ double GR_VEL(double T)
 
 void SAVE_2D(int step, int NMAX, int z)
 {
-    ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(NMAX) + "_" + to_string(z) + ".dat");
+    ofstream myfile("PhaseField_" + to_string(step) + "_" + to_string(NMAX) + ".dat");
     for (int x = 1; x < Nx + 1; ++x) {
         for (int y = 1; y < Ny + 1; ++y) {
             myfile << fixed << setprecision(4) << ETAS[NMAX][x][y][z];
@@ -250,23 +248,18 @@ void SAVE_2D(int step, int NMAX, int z)
     myfile.close();
 }
 
-
-void check_grid(const PhaseField3D& Grid)
-{
-    for (int x = 1; x < Nx + 1; ++x) {
-        for (int y = 1; y < Ny + 1; ++y) {
-            for (int z = 1; z < Nz + 1; ++z) {
-                cout << Grid[x][y][z] << " ";
-            }
+int SORT_GRAIN(vector<PhaseField3D>& NGrid, int Ngr){
+    vector<PhaseField3D> sorted(NMAX, ETAS_TOT);
+    int sorted_Ngr = 0;
+    int n_amor;
+    int crit = 100;
+    for (int N = 0; N < Ngr; N++){
+        n_amor = COUNT_AMOR(NGrid[N]);
+        if ( (Nx*Ny*Nz - n_amor) > crit){
+            sorted[sorted_Ngr] = NGrid[N];
+            sorted_Ngr++;
         }
-	cout << endl;
     }
-}
-
-void check_prob_nuc()
-{
-    for (int k = 0; k <=100; k++){
-        cout << PROB_NUC(Tsim,1E-16) << " ";
-    }
-    cout << endl;
+    ETAS = sorted;
+    return sorted_Ngr;
 }
