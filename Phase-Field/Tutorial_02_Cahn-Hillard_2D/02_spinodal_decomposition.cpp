@@ -131,7 +131,7 @@ private:
         pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
         pvdFile << "  <Collection>\n";
 
-        for (int t = 0; t < totalSteps; t=t+interval) {
+        for (int t = 0; t <= totalSteps; t=t+interval) {
             std::stringstream ss;
             ss << "output_" << t << ".vtk";
             pvdFile << "    <DataSet timestep=\"" << t << "\" group=\"\" part=\"0\" file=\"" << ss.str() << "\"/>\n";
