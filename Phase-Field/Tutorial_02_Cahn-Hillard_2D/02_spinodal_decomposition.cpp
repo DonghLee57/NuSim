@@ -47,7 +47,7 @@ public:
                 saveVTK(filename, psi);
             }
         }
-    createPVDFile("simulation_results.pvd", saveInterval);
+    createPVDFile("simulation_results.pvd", totalSteps, saveInterval);
     }
 
 private:
@@ -120,7 +120,7 @@ private:
         vtkFile.close();
     }
 
-    void createPVDFile(const string& pvdFilename, int numTimeSteps) {
+    void createPVDFile(const string& pvdFilename, int totalSteps, int interval) {
         ofstream pvdFile(pvdFilename);
         if (!pvdFile.is_open()) {
             std::cerr << "Failed to open file for writing PVD data.\n";
@@ -131,8 +131,8 @@ private:
         pvdFile << "<VTKFile type=\"Collection\" version=\"0.1\" byte_order=\"LittleEndian\">\n";
         pvdFile << "  <Collection>\n";
 
-        for (int t = 0; t < numTimeSteps; ++t) {
-            stringstream ss;
+        for (int t = 0; t < totalSteps; t=t+interval) {
+            std::stringstream ss;
             ss << "output_" << t << ".vtk";
             pvdFile << "    <DataSet timestep=\"" << t << "\" group=\"\" part=\"0\" file=\"" << ss.str() << "\"/>\n";
         }
