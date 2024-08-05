@@ -45,10 +45,32 @@ for frame in range(nframe):
 p.close()
     
 import matplotlib.pyplot as plt
+fs = 12
+fig,ax = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True)
+x = np.linspace(0, 1, len(free_energy))
+ax[0].plot(x, free_energy)
+ticks = np.arange(0.0, 1.1, 0.25)
+ax[0].set_xticks(ticks)
+ax[0].set_xticklabels([f"{x:.1f}" for x in ticks], fontsize=fs)
+ax[0].set_xlim([0, 1])
+ax[0].set_xlabel("Time", fontsize=fs)
+ticks = np.arange(0.0, 401, 100)
+ax[0].set_yticks(ticks)
+ax[0].set_yticklabels([f"{x:.0f}" for x in ticks], fontsize=fs)
+ax[0].set_ylim([0, 400])
+ax[0].set_ylabel("Free energy", fontsize=fs)
 
-fig,ax = plt.subplots(1,2)
-ax[0].plot(free_energy)
-ax[1].plot(conc)
+
+ax[1].plot(x, conc)
+ticks = np.arange(0.0, 1.1, 0.25)
+ax[1].set_xticks(ticks)
+ax[1].set_xticklabels([f"{x:.1f}" for x in ticks], fontsize=fs)
+ax[1].set_xlim([0, 1])
+ax[1].set_xlabel("Time", fontsize=fs)
+ticks = np.arange(0.48, 0.521, 0.01)
+ax[1].set_yticks(ticks)
+ax[1].set_yticklabels([f"{x:.2f}" for x in ticks], fontsize=fs)
 ax[1].set_ylim([0.48, 0.52])
+ax[1].set_ylabel(r"Average psi per grid point", fontsize=fs)
 
 plt.show()
