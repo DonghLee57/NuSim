@@ -138,11 +138,11 @@ private:
 };
 
 int main() {
-    CahnHilliard model(128, 1, 10);
+    CahnHilliard model(64, 1, 5);
 
     model.initializeSimulation();
     // (User-defined total number of simulation steps, save interval)
-    model.runSimulation(200000, 500);
+    model.runSimulation(100000, 1000);
 
     return 0;
 }
