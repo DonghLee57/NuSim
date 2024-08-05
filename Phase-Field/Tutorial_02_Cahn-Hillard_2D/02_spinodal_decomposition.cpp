@@ -29,19 +29,10 @@ public:
         }
     }
 
-    void capPsiValues() {
-        for (int i = 0; i < size; ++i) {
-            for (int j = 0; j < size; ++j) {
-                if (psi[i][j] < 0) psi[i][j] = 0;
-                else if (psi[i][j] > 1) psi[i][j] = 1;
-            }
-        }
-    }
-
     void runSimulation(int totalSteps, int saveInterval) {
         for (int step = 0; step < totalSteps + 1; ++step) {
             updateOrderParameter(true, true);
-            capPsiValues();
+
             if (step % saveInterval == 0) {
                 string filename = "output_" + std::to_string(step) + ".vtk";
                 saveVTK(filename, psi);
@@ -144,11 +135,11 @@ private:
 };
 
 int main() {
-    CahnHilliard model(128, 1, 5);
+    CahnHilliard model(64, 1, 10);
 
     model.initializeSimulation();
     // (User-defined total number of simulation steps, save interval)
-    model.runSimulation(25000, 1000);
+    model.runSimulation(200000, 500);
 
     return 0;
 }
