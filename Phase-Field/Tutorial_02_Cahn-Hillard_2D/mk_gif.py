@@ -1,13 +1,16 @@
 import pyvista as pv
 import numpy as np
 
-load_file = "simulation_results.pvd"
-save_file = "res.mp4"
-
+fps = 16
 def grad(arr):
     return (np.roll(arr, -1, axis=0) - np.roll(arr, 1, axis=0))/2
 
-pvd = pv.get_reader(load_file)
+def mul(arr):
+    res = 1
+    for x in arr: res *= x
+    return res
+
+pvd = pv.get_reader("simulation_results.pvd")
 sargs = dict(height=0.40, vertical=True, position_x= 0.8, position_y=0.4, n_labels=5, title='psi', fmt='%.2f')
 mesh_kwargs = {'scalars':'psi',
               'scalar_bar_args':sargs,
@@ -15,62 +18,75 @@ mesh_kwargs = {'scalars':'psi',
               'cmap':'bwr'}
 
 p = pv.Plotter()
-fformat = save_file.split('.')[-1]
-if fformat == 'gif':
-    # pip install imageio
-    p.open_gif(save_file)
-elif fformat == 'mp4':
-    # pip install imageio[ffmpeg]
-    # pip install imageio[pyav]
-    p.open_movie(save_file, framerate=16)
+#p.open_gif("res.gif")
+p.open_movie("res.mp4", framerate=fps)
 
 nframe = len(pvd.time_values)
+
 free_energy = []
 conc = []
 for frame in range(nframe):
     data = pvd.set_active_time_point(frame)
     grid = pvd.read()[0]
     arr = grid.point_data.get_array(mesh_kwargs['scalars'])
-
+    
     grad_x = grad(arr)
     grad_y = grad(arr.T).T
     grad_mag = np.sqrt(grad_x**2 + grad_y**2)
     free_energy.append(np.sum( arr**2 * (1-arr)**2 + 0.5/2 * grad_mag))
-    conc.append(np.sum(arr)/(64**2))
+    conc.append(np.sum(arr)/(mul(grid.dimensions)))
 
     p.add_mesh(pvd.read()[0], show_scalar_bar=True, **mesh_kwargs)
     p.camera_position = 'xy'
     p.write_frame()
 
 p.close()
-    
+
+import matplotlib
 import matplotlib.pyplot as plt
+from matplotlib.animation import FuncAnimation
+
 fs = 12
 fig,ax = plt.subplots(1, 2, figsize=(10, 5), constrained_layout=True)
 x = np.linspace(0, 1, len(free_energy))
-ax[0].plot(x, free_energy)
-ticks = np.arange(0.0, 1.1, 0.25)
-ax[0].set_xticks(ticks)
-ax[0].set_xticklabels([f"{x:.1f}" for x in ticks], fontsize=fs)
-ax[0].set_xlim([0, 1])
-ax[0].set_xlabel("Time", fontsize=fs)
-ticks = np.arange(0.0, 401, 100)
-ax[0].set_yticks(ticks)
-ax[0].set_yticklabels([f"{x:.0f}" for x in ticks], fontsize=fs)
-ax[0].set_ylim([0, 400])
-ax[0].set_ylabel("Free energy", fontsize=fs)
+ax[0].plot(x[0], free_energy[0], c='C3')
 
+ax[1].plot(x[0], conc[0], c='C3')
 
-ax[1].plot(x, conc)
-ticks = np.arange(0.0, 1.1, 0.25)
-ax[1].set_xticks(ticks)
-ax[1].set_xticklabels([f"{x:.1f}" for x in ticks], fontsize=fs)
-ax[1].set_xlim([0, 1])
-ax[1].set_xlabel("Time", fontsize=fs)
-ticks = np.arange(0.48, 0.521, 0.01)
-ax[1].set_yticks(ticks)
-ax[1].set_yticklabels([f"{x:.2f}" for x in ticks], fontsize=fs)
-ax[1].set_ylim([0.48, 0.52])
-ax[1].set_ylabel(r"Average psi per grid point", fontsize=fs)
+def update(frame):
+    ax[0].clear()
+    ax[1].clear()
+
+    ticks = np.arange(0.0, 1.1, 0.25)
+    for i in range(2):
+        ax[i].set_xticks(ticks)
+        ax[i].set_xticklabels([f"{x:.1f}" for x in ticks], fontsize=fs)
+        ax[i].set_xlim([0, 1])
+        ax[i].set_xlabel("Time", fontsize=fs)
+
+    for i in range(2):
+        if i==0:
+            ticks = np.arange(0.0, 401, 100)
+            ax[i].set_yticks(ticks)
+            ax[i].set_yticklabels([f"{x:.0f}" for x in ticks], fontsize=fs)
+            ax[i].set_ylim([0, 400])
+            ax[i].set_ylabel("Free energy", fontsize=fs)
+        elif i==1:
+            ticks = np.arange(0.48, 0.521, 0.02)
+            ax[i].set_yticks(ticks)
+            ax[i].set_yticklabels([f"{x:.2f}" for x in ticks], fontsize=fs)
+            ax[i].set_ylim([0.48, 0.52])
+            ax[i].set_ylabel("Average psi per grid point", fontsize=fs)
+
+    ax[0].plot(x[:frame+1], free_energy[:frame+1], c='C3')
+    ax[1].plot(x[:frame+1], conc[:frame+1], c='C3')
+    ax[0].plot(x[frame], free_energy[frame], marker='o', c='C3')
+    ax[1].plot(x[frame], conc[frame], marker='o', c='C3')
+    return ax[0], ax[1]
+
+ani = FuncAnimation(fig, update, frames=len(x), blit=False)
+
+FFwriter = matplotlib.animation.FFMpegWriter(fps=fps)
+ani.save('animation.mp4', writer=FFwriter)
 
 plt.show()
