@@ -17,8 +17,9 @@ phi = CellVariable(name = "solution variable",
 x = mesh.cellCenters[0]
 phi.setValue(1, where=(x < 0.5*L))
 
-# Governing equation
 D = 1.
+
+# Governing equation
 eq = TransientTerm() == DiffusionTerm(coeff=D)
 
 timeStepDuration = 0.9 * dx**2 / (2 * D)
